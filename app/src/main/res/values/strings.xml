@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Assignment10</string>
+    <string name="bt_cancel">Cancel</string>
+    <string name="bt_save">Save</string>
+    <string name="bt_submit">Submit</string>
+    <string name="bt_download">Download</string>
+    <string name="bt_auto_insert">Auto Insert</string>
+    <string name="loading">Loading...</string>
+</resources>
+
