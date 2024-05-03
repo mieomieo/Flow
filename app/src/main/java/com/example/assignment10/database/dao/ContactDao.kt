@@ -20,8 +20,8 @@ interface ContactDao {
     @Delete
     suspend fun deleteContact(contact: Contact)
 
-    @Query("SELECT * FROM contact_table")
-    fun getAllContact(): LiveData<List<Contact>>
+//    @Query("SELECT * FROM contact_table")
+//    fun getAllContact(): LiveData<List<Contact>>
 
     @Query("Select * from contact_table")
     fun getFlowAllContact(): Flow<List<Contact>>

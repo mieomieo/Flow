@@ -1,32 +1,28 @@
 package com.example.assignment10.activities
 
 import android.annotation.SuppressLint
-import android.app.ProgressDialog
 import android.content.Intent
-import android.os.AsyncTask
 import android.os.Bundle
-import android.util.Log
-import android.view.View
+import android.text.Editable
+import android.text.TextWatcher
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.assignment10.adapter.ContactAdapter
+import com.example.assignment10.adapter.ContactSearchAdapter
 import com.example.assignment10.databinding.ActivityMainBinding
 import com.example.assignment10.model.Contact
 import com.example.assignment10.viewmodel.ContactViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import java.text.Normalizer
+import java.util.regex.Pattern
 import kotlin.random.Random
+
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
-//    private val contactViewModel: ContactViewModel by lazy {
-//        ViewModelProvider(
-//            this,
-//            ContactViewModel.ContactViewModelFactory(this.application)
-//        )[ContactViewModel::class.java]
-//    }
     private val contactViewModel: ContactViewModel by viewModels()
     private lateinit var binding: ActivityMainBinding
 
@@ -37,23 +33,56 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         initEvents()
         initControls()
+
     }
 
     private fun initControls() {
-        val adapter = ContactAdapter(this@MainActivity, onItemClick, onItemDelete)
+        val adapterContact = ContactAdapter(this@MainActivity, onItemClick, onItemDelete)
+        val adapterSearchContact =
+            ContactSearchAdapter(this@MainActivity, onItemClick, onItemDelete)
         binding.rvContacts.setHasFixedSize(true)
         binding.rvContacts.layoutManager = LinearLayoutManager(this)
-        binding.rvContacts.adapter = adapter
-        contactViewModel.apply {
-            allContactsLiveData.observe(this@MainActivity, Observer { list ->
-                adapter.setContacts(list)
-                Log.e("Check size", "onCreate: ${list.size}")
-            })
-            getAllContact().observe(this@MainActivity, Observer {
-                adapter.setContacts(it)
-            })
-        }
+        binding.rvContacts.adapter = adapterContact
 
+        binding.recyclerViewListSearchContacts.setHasFixedSize(true)
+        binding.recyclerViewListSearchContacts.layoutManager = LinearLayoutManager(this)
+        binding.recyclerViewListSearchContacts.adapter = adapterSearchContact
+
+
+        binding.searchView.editText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(
+                s: CharSequence?, start: Int, count: Int, after: Int
+            ) {
+                // No action needed here
+            }
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val text = getTextSearch(s.toString())
+                lifecycleScope.launch {
+                    contactViewModel.getFlowAllContact().collect { list ->
+
+                        val filteredContact = list.filter {
+                            getTextSearch(it.name).contains(
+                                text, ignoreCase = true
+                            )
+                        }
+                        adapterSearchContact.updateContact(filteredContact)
+                    }
+                }
+            }
+
+            override fun afterTextChanged(s: Editable?) {
+                // No action needed here
+            }
+        })
+
+        lifecycleScope.launch {
+            contactViewModel.apply {
+                getFlowAllContact().collect { list ->
+                    adapterContact.setContacts(list)
+                }
+            }
+        }
     }
 
     private fun initEvents() {
@@ -62,9 +91,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
 
         }
-
     }
-
 
 
     fun generateRandomEmail(): String {
@@ -91,6 +118,12 @@ class MainActivity : AppCompatActivity() {
         return (1..nameLength)
             .map { alphabet.random() }
             .joinToString("")
+    }
+
+    fun getTextSearch(input: String?): String {
+        val nfdNormalizedString = Normalizer.normalize(input, Normalizer.Form.NFD)
+        val pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+")
+        return pattern.matcher(nfdNormalizedString).replaceAll("")
     }
 
     private val onItemClick: (Contact) -> Unit = {
